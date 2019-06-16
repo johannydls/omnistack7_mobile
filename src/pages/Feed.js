@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-
+import io from 'socket.io-client';
 import { View, Text, Image, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 
 import api from '../services/api';
@@ -25,13 +25,33 @@ export default class Feed extends Component {
     };
 
     async componentDidMount() {
-        //this.registerToSocket();
+        this.registerToSocket();
 
         const response = await api.get('posts');
 
         console.log(response.data);
 
         this.setState({ feed: response.data });
+    }
+
+    registerToSocket = () => {
+        const socket = io('http://192.168.0.117:3333');
+
+        socket.on('post', newPost => {
+            this.setState({ feed: [newPost, ...this.state.feed] })
+        });
+
+        socket.on('like', likedPost => {
+            this.setState({
+                feed: this.state.feed.map(post => {
+                    return post._id === likedPost._id ? likedPost : post
+                })
+            })
+        });
+    };
+
+    handleLike = id => {
+        api.post(`/posts/${id}/like`);
     }
 
     render() {
@@ -54,17 +74,17 @@ export default class Feed extends Component {
 
                             </View>
 
-                            <Image style={styles.feedImage} source={{ uri: `http://192.168.0.117:3333/${item.image}` }}/>
+                            <Image style={styles.feedImage} source={{ uri: `http://192.168.0.117:3333/files/${item.image}` }}/>
 
                             <View style={styles.feedItemFooter}>
                                 <View style={styles.actions}>
-                                    <TouchableOpacity onPress={() => {}}>
+                                    <TouchableOpacity style={styles.action} onPress={() => this.handleLike(item._id) }>
                                         <Image source={like} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => {}}>
+                                    <TouchableOpacity style={styles.action} onPress={() => {}}>
                                         <Image source={comment} />
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => {}}>
+                                    <TouchableOpacity style={styles.action} onPress={() => {}}>
                                         <Image source={send} />
                                     </TouchableOpacity>
                                 </View>
@@ -85,5 +105,64 @@ export default class Feed extends Component {
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+
+    feedItem: {
+        marginTop: 20,
+    },
+    
+    feedItemHeader: {
+        paddingHorizontal: 15,
+        
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
+
+    name: {
+        fontSize: 14,
+        color: '#000',
+    },
+
+    place: {
+        fontSize: 12,
+        color: '#665',
+        marginTop: 2
+    },
+
+    feedImage: {
+        width: '100%',
+        height: 400,
+        marginVertical: 15
+    },
+
+    feedItemFooter: {
+        paddingHorizontal: 15
+    },
+
+    actions: {
+        flexDirection: 'row'
+    },
+
+    action: {
+        marginRight: 8
+    },
+
+    likes: {
+        marginTop: 15,
+        fontWeight: 'bold',
+        color: '#000'
+    },
+
+    description: {
+        lineHeight: 18,
+        color: '#000'
+    },
+
+    hashtags: {
+        color: '#7159c1'
+    }
 
 })
